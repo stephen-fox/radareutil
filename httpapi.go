@@ -1,0 +1,63 @@
+package radareutil
+
+import (
+	"errors"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"strconv"
+	"time"
+)
+
+const (
+	cmdSubPath = "/cmd"
+)
+
+type HttpApi interface {
+	Exec(command string) (string, error)
+}
+
+type defaultHttpApi struct {
+	httpClient *http.Client
+	address    *url.URL
+}
+
+func (o defaultHttpApi) Exec(command string) (string, error) {
+	resp, err := o.httpClient.Get(o.address.String() + cmdSubPath + "/" + command)
+	if err != nil {
+		return "", err
+	}
+	
+	if resp.Body == nil {
+		return "", errors.New("No body")
+	}
+	defer resp.Body.Close()
+	
+	raw, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	
+	content := string(raw)
+	
+	if resp.StatusCode != http.StatusOK {
+		base := "Request failed with code " + strconv.Itoa(resp.StatusCode)
+		
+		if len(content) == 0 {
+			return "", errors.New(base)
+		}
+
+		return "", errors.New(base + ". Details - " + content)
+	}
+	
+	return content, nil
+}
+
+func NewHttpApi(address *url.URL) (HttpApi, error) {
+	return defaultHttpApi{
+		httpClient: &http.Client{
+			Timeout: 10 * time.Second,
+		},
+		address: address,
+	}, nil
+}

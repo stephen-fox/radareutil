@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -14,7 +15,8 @@ const (
 )
 
 type HttpApiOptions struct {
-	Timeout time.Duration
+	Timeout             time.Duration
+	DoNotTrimWhiteSpace bool
 }
 
 type HttpApi interface {
@@ -24,6 +26,7 @@ type HttpApi interface {
 type defaultHttpApi struct {
 	httpClient *http.Client
 	address    *url.URL
+	options    *HttpApiOptions
 }
 
 func (o defaultHttpApi) Exec(command string) (string, error) {
@@ -53,11 +56,15 @@ func (o defaultHttpApi) Exec(command string) (string, error) {
 
 		return "", errors.New(base + ". Details - " + content)
 	}
+
+	if !o.options.DoNotTrimWhiteSpace {
+		content = strings.TrimSpace(content)
+	}
 	
 	return content, nil
 }
 
-func NewHttpApi(address *url.URL, options HttpApiOptions) (HttpApi, error) {
+func NewHttpApi(address *url.URL, options *HttpApiOptions) (HttpApi, error) {
 	if options.Timeout == 0 {
 		options.Timeout = 10 * time.Second
 	}
@@ -67,5 +74,6 @@ func NewHttpApi(address *url.URL, options HttpApiOptions) (HttpApi, error) {
 			Timeout: options.Timeout,
 		},
 		address: address,
+		options: options,
 	}, nil
 }

@@ -1,10 +1,13 @@
 package radareutil
 
 import (
-	"errors"
+	"bytes"
+	"fmt"
+	"os"
 	"os/exec"
-	"path"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -12,7 +15,16 @@ const (
 	httpServerArg = "-c=h"
 )
 
+type State string
+
+const (
+	Stopped State = "stopped"
+	Dead    State = "dead"
+	Running State = "running"
+)
+
 type HttpServerOptions struct {
+	OnStop         chan ServerStoppedInfo
 	DisableSandbox bool
 	DebugPid       int
 	Port           int
@@ -21,11 +33,25 @@ type HttpServerOptions struct {
 	HttpApi        HttpApi
 }
 
+type ServerStoppedInfo struct {
+	err error
+	out string
+}
+
+func (o *ServerStoppedInfo) Err() error {
+	return o.err
+}
+
+func (o *ServerStoppedInfo) CombinedOutput() string {
+	return o.out
+}
+
 type HttpServer interface {
 	Start() error
 	Stop()
 	Restart() error
 	Options() *HttpServerOptions
+	Status() ServerStatus
 }
 
 type defaultHttpServer struct {
@@ -33,6 +59,7 @@ type defaultHttpServer struct {
 	mutex   *sync.Mutex
 	server  *exec.Cmd
 	options *HttpServerOptions
+	state   State
 }
 
 func (o *defaultHttpServer) Start() error {
@@ -44,8 +71,8 @@ func (o *defaultHttpServer) Start() error {
 
 // startUnsafe starts the server without use of the lock.
 func (o *defaultHttpServer) startUnsafe() error {
-	if o.server != nil {
-		return errors.New("Server is already running")
+	if o.state == Running {
+		return fmt.Errorf("server is already Running")
 	}
 
 	var args []string
@@ -66,17 +93,52 @@ func (o *defaultHttpServer) startUnsafe() error {
 		args = append(args, "--")
 	}
 
-	r := exec.Command(path.Base(o.exePath), args...)
-	r.Dir = path.Dir(o.exePath)
+	radare := exec.Command(o.exePath, args...)
+	radare.Dir = filepath.Dir(o.exePath)
 
-	err := r.Start()
-	if err != nil {
-		return err
+	var output *bytes.Buffer
+	if o.options.OnStop != nil {
+		output = bytes.NewBuffer(nil)
+		radare.Stderr = output
+		radare.Stdout = output
 	}
 
-	o.server = r
+	err := radare.Start()
+	if err != nil {
+		return fmt.Errorf("failed to start radare - %s", err.Error())
+	}
+
+	o.state = Running
+	o.server = radare
+
+	go o.monitor(output)
 
 	return nil
+}
+
+func (o *defaultHttpServer) monitor(output *bytes.Buffer) {
+	err := o.server.Wait()
+
+	o.mutex.Lock()
+
+	if o.state != Stopped {
+		o.state = Dead
+	}
+
+	if o.options.OnStop != nil {
+		var info ServerStoppedInfo
+		if o.state == Dead {
+			info.err = err
+		}
+		if output != nil {
+			info.out = output.String()
+		}
+		o.options.OnStop <- info
+	}
+
+	o.server = nil
+
+	o.mutex.Unlock()
 }
 
 func (o *defaultHttpServer) Stop() {
@@ -88,26 +150,29 @@ func (o *defaultHttpServer) Stop() {
 
 // stopUnsafe stops the server without use of the lock.
 func (o *defaultHttpServer) stopUnsafe() {
-	if o.server == nil {
+	if o.state != Running {
 		return
 	}
+
+	o.state = Stopped
 
 	if o.options.DetachOnStop && o.options.HttpApi != nil {
 		o.options.HttpApi.Exec("dp-")
 	}
 
 	o.server.Process.Kill()
-
-	o.server = nil
 }
 
+// TODO: This can race with the 'monitor()' thread.
+//  Needs to be improved.
 func (o *defaultHttpServer) Restart() error {
 	o.mutex.Lock()
-	defer o.mutex.Unlock()
-
 	o.stopUnsafe()
+	o.mutex.Unlock()
 
+	o.mutex.Lock()
 	err := o.startUnsafe()
+	o.mutex.Unlock()
 	if err != nil {
 		return err
 	}
@@ -117,6 +182,19 @@ func (o *defaultHttpServer) Restart() error {
 
 func (o *defaultHttpServer) Options() *HttpServerOptions {
 	return o.options
+}
+
+func (o *defaultHttpServer) Status() ServerStatus {
+	o.mutex.Lock()
+	defer o.mutex.Unlock()
+
+	return ServerStatus{
+		State: o.state,
+	}
+}
+
+type ServerStatus struct {
+	State State
 }
 
 // NewHttpServer returns a new instance of radare2 running in HTTP server mode.
@@ -167,9 +245,24 @@ func (o *defaultHttpServer) Options() *HttpServerOptions {
 //	|`-'|
 //	`---'
 func NewHttpServer(exePath string, options *HttpServerOptions) (HttpServer, error) {
+	if !filepath.IsAbs(exePath) && !strings.ContainsAny("\\/", exePath) {
+		whereOutputRaw, err := exec.Command("where", exePath).CombinedOutput()
+		if err != nil {
+			return nil, fmt.Errorf("failed to lookup radare binary - %s - output: '%s'", err.Error(), whereOutputRaw)
+		}
+
+		exePath = string(bytes.TrimSpace(whereOutputRaw))
+
+		_, err = os.Stat(exePath)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &defaultHttpServer{
 		exePath: exePath,
 		options: options,
 		mutex:   &sync.Mutex{},
+		state:   Stopped,
 	}, nil
 }

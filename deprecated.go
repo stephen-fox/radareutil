@@ -97,7 +97,7 @@ func (o *deprecatedHttpServer) Start() error {
 // startUnsafe starts the server without use of the lock.
 func (o *deprecatedHttpServer) startUnsafe() error {
 	if o.state == Running {
-		return fmt.Errorf("server is already Running")
+		return fmt.Errorf("server is already running")
 	}
 
 	var args []string

@@ -2,9 +2,7 @@ package radareutil
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os/exec"
@@ -35,31 +33,9 @@ type defaultHttpApi struct {
 }
 
 func (o defaultHttpApi) Exec(command string) (string, error) {
-	resp, err := o.httpClient.Get(o.address.String() + cmdSubPath + "/" + command)
+	content, err := executeHttpCall(command, o.address, o.httpClient)
 	if err != nil {
-		return "", err
-	}
-
-	if resp.Body == nil {
-		return "", errors.New("No body")
-	}
-	defer resp.Body.Close()
-
-	raw, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	content := string(raw)
-
-	if resp.StatusCode != http.StatusOK {
-		base := "Request failed with code " + strconv.Itoa(resp.StatusCode)
-
-		if len(content) == 0 {
-			return "", errors.New(base)
-		}
-
-		return "", errors.New(base + ". Details - " + content)
+		return content, err
 	}
 
 	if !o.options.DoNotTrimWhiteSpace {

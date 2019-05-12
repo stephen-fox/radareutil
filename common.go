@@ -21,6 +21,14 @@ const (
 	Running State = "running"
 )
 
+type Api interface {
+	Start() error
+	Kill()
+	OnStopped() chan StoppedInfo
+	Status() Status
+	Execute(command string) (string, error)
+}
+
 type Status struct {
 	State State
 }

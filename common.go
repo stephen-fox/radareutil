@@ -60,6 +60,7 @@ func (o *StoppedInfo) CombinedOutput() string {
 
 type Radare2Config struct {
 	ExecutablePath     string
+	CustomCliArgs      []string
 	DoNotTrimOutput    bool
 	SaveOutput         bool
 	DebugPid           int
@@ -80,6 +81,10 @@ func (o *Radare2Config) Validate() error {
 }
 
 func (o *Radare2Config) Args(mode Mode) ([]string, error) {
+	if o.CustomCliArgs != nil {
+		return o.CustomCliArgs, nil
+	}
+
 	var args []string
 
 	switch mode {

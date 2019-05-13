@@ -173,12 +173,11 @@ func (o *r2Proc) Start(mode Mode) error {
 		return fmt.Errorf("failed to start radare - %s", err.Error())
 	}
 
-	var output *bytes.Buffer
+	var output *syncBuffer
 	if o.config.SaveOutput {
-		output = bytes.NewBuffer(nil)
-		w := newSyncBuffer(output)
-		o.stderr = io.TeeReader(stderr, w)
-		o.stdout = io.TeeReader(stdout, w)
+		output = newSyncBuffer()
+		o.stderr = io.TeeReader(stderr, output)
+		o.stdout = io.TeeReader(stdout, output)
 	} else {
 		o.stderr = stderr
 		o.stdout = stdout
@@ -193,7 +192,7 @@ func (o *r2Proc) Start(mode Mode) error {
 	return nil
 }
 
-func (o *r2Proc) monitor(output *bytes.Buffer) {
+func (o *r2Proc) monitor(output *syncBuffer) {
 	err := o.cmd.Wait()
 
 	o.mutex.Lock()
@@ -251,10 +250,10 @@ func (o *syncBuffer) String() string {
 	return o.buff.String()
 }
 
-func newSyncBuffer(buffer *bytes.Buffer) *syncBuffer {
+func newSyncBuffer() *syncBuffer {
 	return &syncBuffer{
 		mutex: &sync.Mutex{},
-		buff:  buffer,
+		buff:  bytes.NewBuffer(nil),
 	}
 }
 

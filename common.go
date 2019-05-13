@@ -176,8 +176,7 @@ func (o *r2Proc) Start(mode Mode) error {
 	var output *bytes.Buffer
 	if o.config.SaveOutput {
 		output = bytes.NewBuffer(nil)
-		writeMutex := &sync.Mutex{}
-		w := newSyncBuffer(output, writeMutex)
+		w := newSyncBuffer(output)
 		o.stderr = io.TeeReader(stderr, w)
 		o.stdout = io.TeeReader(stdout, w)
 	} else {
@@ -252,9 +251,9 @@ func (o *syncBuffer) String() string {
 	return o.buff.String()
 }
 
-func newSyncBuffer(buffer *bytes.Buffer, mutex *sync.Mutex) *syncBuffer {
+func newSyncBuffer(buffer *bytes.Buffer) *syncBuffer {
 	return &syncBuffer{
-		mutex: mutex,
+		mutex: &sync.Mutex{},
 		buff:  buffer,
 	}
 }

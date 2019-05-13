@@ -9,6 +9,14 @@ import (
 	"sync"
 )
 
+type Mode string
+
+const (
+	Unset Mode = ""
+	Cli   Mode = "cli"
+	Http  Mode = "http"
+)
+
 type State string
 
 func (o State) String() string {
@@ -47,17 +55,21 @@ func (o *StoppedInfo) CombinedOutput() string {
 }
 
 type Radare2Config struct {
+	Mode               Mode
 	ExecutablePath     string
 	DoNotTrimOutput    bool
 	SaveOutput         bool
 	DebugPid           int
-	RunHttpServer      bool
 	DisableHttpSandbox bool
 	HttpPort           int
 	DetachOnStop       bool
 }
 
 func (o *Radare2Config) Validate() error {
+	if o.Mode == Unset {
+		return fmt.Errorf("'Mode' must be set")
+	}
+
 	exePathFinal, err := fullyQualifiedBinaryPath(o.ExecutablePath)
 	if err != nil {
 		return err
@@ -71,7 +83,10 @@ func (o *Radare2Config) Validate() error {
 func (o *Radare2Config) Args() []string {
 	var args []string
 
-	if o.RunHttpServer {
+	switch o.Mode {
+	case Cli:
+		args = append(args, "-q0")
+	case Http:
 		if o.HttpPort > 0 {
 			args = append(args, fmt.Sprintf("%s%d", httpServerArg, o.HttpPort))
 		} else {

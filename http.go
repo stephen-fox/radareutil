@@ -23,7 +23,7 @@ type httpServerApi struct {
 }
 
 func (o *httpServerApi) Start() error {
-	return o.r2.Start()
+	return o.r2.Start(Http)
 }
 
 func (o *httpServerApi) Kill() {

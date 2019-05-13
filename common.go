@@ -11,6 +11,10 @@ import (
 
 type Mode string
 
+func (o Mode) String() string {
+	return string(o)
+}
+
 const (
 	Unset Mode = ""
 	Cli   Mode = "cli"
@@ -55,7 +59,6 @@ func (o *StoppedInfo) CombinedOutput() string {
 }
 
 type Radare2Config struct {
-	Mode               Mode
 	ExecutablePath     string
 	DoNotTrimOutput    bool
 	SaveOutput         bool
@@ -66,10 +69,6 @@ type Radare2Config struct {
 }
 
 func (o *Radare2Config) Validate() error {
-	if o.Mode == Unset {
-		return fmt.Errorf("'Mode' must be set")
-	}
-
 	exePathFinal, err := fullyQualifiedBinaryPath(o.ExecutablePath)
 	if err != nil {
 		return err
@@ -80,10 +79,10 @@ func (o *Radare2Config) Validate() error {
 	return nil
 }
 
-func (o *Radare2Config) Args() []string {
+func (o *Radare2Config) Args(mode Mode) ([]string, error) {
 	var args []string
 
-	switch o.Mode {
+	switch mode {
 	case Cli:
 		args = append(args, "-q0")
 	case Http:
@@ -96,6 +95,8 @@ func (o *Radare2Config) Args() []string {
 		if o.DisableHttpSandbox {
 			args = append(args, "-e", "http.sandbox=false")
 		}
+	default:
+		return nil, fmt.Errorf("unknown mode '%s'", mode.String())
 	}
 
 	if o.DebugPid > 0 {
@@ -104,7 +105,7 @@ func (o *Radare2Config) Args() []string {
 		args = append(args, "--")
 	}
 
-	return args
+	return args, nil
 }
 
 type r2Proc struct {
@@ -131,7 +132,7 @@ func (o *r2Proc) OnStopped() chan StoppedInfo {
 	return o.stopped
 }
 
-func (o *r2Proc) Start() error {
+func (o *r2Proc) Start(mode Mode) error {
 	o.mutex.Lock()
 	defer o.mutex.Unlock()
 
@@ -144,7 +145,12 @@ func (o *r2Proc) Start() error {
 		return err
 	}
 
-	radare := exec.Command(o.config.ExecutablePath, o.config.Args()...)
+	args, err := o.config.Args(mode)
+	if err != nil {
+		return err
+	}
+
+	radare := exec.Command(o.config.ExecutablePath, args...)
 	radare.Dir = filepath.Dir(o.config.ExecutablePath)
 
 	stdin, err := radare.StdinPipe()

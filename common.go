@@ -89,7 +89,8 @@ func (o *Radare2Config) Args(mode Mode) ([]string, error) {
 
 	switch mode {
 	case Cli:
-		args = append(args, "-q0")
+		args = append(args, "-q")
+		args = append(args, "-0")
 	case Http:
 		if o.HttpPort > 0 {
 			args = append(args, fmt.Sprintf("%s%d", httpServerArg, o.HttpPort))

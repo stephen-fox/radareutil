@@ -2,8 +2,8 @@ package radareutil
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
-	"strings"
 )
 
 type cliApi struct {
@@ -17,8 +17,8 @@ func (o *cliApi) Start() error {
 		return err
 	}
 
-	// Read some data per pipe example.
-	_, err = bufio.NewReader(o.r2.stdout).ReadString('\x00')
+	// Read initial data per pipe example.
+	_, err = bufio.NewReader(o.r2.stdout).ReadByte()
 	if err != nil {
 		return err
 	}
@@ -44,12 +44,16 @@ func (o *cliApi) Execute(cmd string) (string, error) {
 		return "", err
 	}
 
-	output, err := bufio.NewReader(o.r2.stdout).ReadString('\x00')
+	output, err := bufio.NewReader(o.r2.stdout).ReadBytes('\x00')
 	if err != nil {
 		return "", err
 	}
 
-	return strings.TrimRight(output, "\n\x00"), nil
+	if o.config.DoNotTrimOutput {
+		return string(output), nil
+	}
+
+	return string(bytes.TrimSpace(bytes.TrimRight(output, "\n\x00"))), nil
 }
 
 func NewCliApi(config *Radare2Config) (Api, error) {

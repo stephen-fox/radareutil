@@ -114,6 +114,9 @@ func (o *Radare2Config) Args(mode Mode) ([]string, error) {
 	return args, nil
 }
 
+// TODO: stderr. Holding onto stderr will require something
+//  constantly read it. Failure to do so will lead to radare2
+//  not producing any output.
 type r2Proc struct {
 	config  *Radare2Config
 	mutex   *sync.Mutex
@@ -122,7 +125,6 @@ type r2Proc struct {
 	cmd     *exec.Cmd
 	stdin   io.Writer
 	stdout  io.Reader
-	stderr  io.Reader
 }
 
 func (o *r2Proc) Status() Status {
@@ -169,11 +171,6 @@ func (o *r2Proc) Start(mode Mode) error {
 		return fmt.Errorf("failed to get stdout pipe - %s", err.Error())
 	}
 
-	stderr, err := radare.StderrPipe()
-	if err != nil {
-		return fmt.Errorf("failed to get stderr pipe - %s", err.Error())
-	}
-
 	err = radare.Start()
 	if err != nil {
 		return fmt.Errorf("failed to start radare - %s", err.Error())
@@ -182,10 +179,8 @@ func (o *r2Proc) Start(mode Mode) error {
 	var output *syncBuffer
 	if o.config.SaveOutput {
 		output = newSyncBuffer()
-		o.stderr = io.TeeReader(stderr, output)
 		o.stdout = io.TeeReader(stdout, output)
 	} else {
-		o.stderr = stderr
 		o.stdout = stdout
 	}
 

@@ -39,6 +39,7 @@ type Api interface {
 	OnStopped() chan StoppedInfo
 	Status() Status
 	Execute(command string) (string, error)
+	ExecuteToJson(command string, pointer interface{}) error
 }
 
 type Status struct {

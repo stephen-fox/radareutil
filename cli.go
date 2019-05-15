@@ -3,6 +3,7 @@ package radareutil
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"fmt"
 )
 
@@ -36,6 +37,20 @@ func (o *cliApi) Status() Status {
 
 func (o *cliApi) OnStopped() chan StoppedInfo {
 	return o.r2.OnStopped()
+}
+
+func (o *cliApi) ExecuteToJson(c string, p interface{}) error {
+	output, err := o.Execute(c)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal([]byte(output), p)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (o *cliApi) Execute(cmd string) (string, error) {

@@ -1,6 +1,7 @@
 package radareutil
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -36,6 +37,20 @@ func (o *httpServerApi) Status() Status {
 
 func (o *httpServerApi) OnStopped() chan StoppedInfo {
 	return o.r2.OnStopped()
+}
+
+func (o *httpServerApi) ExecuteToJson(c string, p interface{}) error {
+	output, err := o.Execute(c)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal([]byte(output), p)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (o *httpServerApi) Execute(command string) (string, error) {

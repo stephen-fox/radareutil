@@ -54,6 +54,11 @@ func (o *cliApi) ExecuteToJson(c string, p interface{}) error {
 }
 
 func (o *cliApi) Execute(cmd string) (string, error) {
+	current := o.r2.Status().State
+	if current != Running {
+		return "", fmt.Errorf("cannot execute command - state is %s", current)
+	}
+
 	_, err := fmt.Fprintln(o.r2.stdin, cmd)
 	if err != nil {
 		return "", err

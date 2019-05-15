@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 )
@@ -36,16 +35,12 @@ type defaultHttpApi struct {
 }
 
 func (o defaultHttpApi) Exec(command string) (string, error) {
-	content, err := executeHttpCall(command, o.address, o.httpClient)
+	content, err := executeHttpCall(command, o.address, o.httpClient, !o.options.DoNotTrimWhiteSpace)
 	if err != nil {
-		return content, err
+		return string(content), err
 	}
 
-	if !o.options.DoNotTrimWhiteSpace {
-		content = strings.TrimSpace(content)
-	}
-
-	return content, nil
+	return string(content), nil
 }
 
 // Deprecated: Use 'NewCustomHttpServerApi()' instead.

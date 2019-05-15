@@ -40,12 +40,12 @@ func (o *cliApi) OnStopped() chan StoppedInfo {
 }
 
 func (o *cliApi) ExecuteToJson(c string, p interface{}) error {
-	output, err := o.Execute(c)
+	output, err := o.ExecuteToBytes(c)
 	if err != nil {
 		return err
 	}
 
-	err = json.Unmarshal([]byte(output), p)
+	err = json.Unmarshal(output, p)
 	if err != nil {
 		return err
 	}
@@ -54,26 +54,35 @@ func (o *cliApi) ExecuteToJson(c string, p interface{}) error {
 }
 
 func (o *cliApi) Execute(cmd string) (string, error) {
+	raw, err := o.ExecuteToBytes(cmd)
+	if err != nil {
+		return string(raw), err
+	}
+
+	return string(raw), nil
+}
+
+func (o *cliApi) ExecuteToBytes(cmd string) ([]byte, error) {
 	current := o.r2.Status().State
 	if current != Running {
-		return "", fmt.Errorf("cannot execute command - state is %s", current)
+		return nil, fmt.Errorf("cannot execute command - state is %s", current)
 	}
 
 	_, err := fmt.Fprintln(o.r2.stdin, cmd)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	output, err := bufio.NewReader(o.r2.stdout).ReadBytes('\x00')
+	raw, err := bufio.NewReader(o.r2.stdout).ReadBytes('\x00')
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	if o.config.DoNotTrimOutput {
-		return string(output), nil
+		return raw, nil
 	}
 
-	return string(bytes.TrimSpace(bytes.TrimRight(output, "\n\x00"))), nil
+	return bytes.TrimSpace(bytes.TrimRight(raw, "\n\x00")), nil
 }
 
 func NewCliApi(config *Radare2Config) (Api, error) {

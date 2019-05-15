@@ -40,6 +40,7 @@ type Api interface {
 	Status() Status
 	Execute(command string) (string, error)
 	ExecuteToJson(command string, pointer interface{}) error
+	ExecuteToBytes(command string) ([]byte, error)
 }
 
 type Status struct {

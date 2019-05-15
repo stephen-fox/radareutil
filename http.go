@@ -1,6 +1,7 @@
 package radareutil
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -8,7 +9,6 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -54,18 +54,23 @@ func (o *httpServerApi) ExecuteToJson(c string, p interface{}) error {
 }
 
 func (o *httpServerApi) Execute(command string) (string, error) {
+	result, err := o.ExecuteToBytes(command)
+	if err != nil {
+		return string(result), err
+	}
+
+	return string(result), nil
+}
+
+func (o *httpServerApi) ExecuteToBytes(command string) ([]byte, error) {
 	current := o.r2.Status().State
 	if current != Running {
-		return "", fmt.Errorf("cannot execute command - state is %s", current)
+		return nil, fmt.Errorf("cannot execute command - state is %s", current)
 	}
 
-	result, err := executeHttpCall(command, o.address, o.client)
+	result, err := executeHttpCall(command, o.address, o.client, !o.config.DoNotTrimOutput)
 	if err != nil {
 		return result, err
-	}
-
-	if !o.config.DoNotTrimOutput {
-		result = strings.TrimSpace(result)
 	}
 
 	return result, nil
@@ -157,33 +162,35 @@ func NewCustomHttpServerApi(address *url.URL, httpClient *http.Client, config *R
 	}, nil
 }
 
-func executeHttpCall(command string, address *url.URL, httpClient *http.Client) (string, error) {
+func executeHttpCall(command string, address *url.URL, httpClient *http.Client, trim bool) ([]byte, error) {
 	resp, err := httpClient.Get(address.String() + cmdSubPath + "/" + command)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	if resp.Body == nil {
-		return "", errors.New("http response body is empty")
+		return nil, errors.New("http response body is empty")
 	}
 	defer resp.Body.Close()
 
 	raw, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-
-	content := string(raw)
 
 	if resp.StatusCode != http.StatusOK {
 		base := "request failed with code " + strconv.Itoa(resp.StatusCode)
 
-		if len(content) == 0 {
-			return "", errors.New(base)
+		if len(raw) == 0 {
+			return nil, errors.New(base)
 		}
 
-		return "", errors.New(base + " - details - " + content)
+		return nil, errors.New(base + " - details - " + string(raw))
 	}
 
-	return content, nil
+	if trim {
+		raw = bytes.TrimSpace(raw)
+	}
+
+	return raw, nil
 }

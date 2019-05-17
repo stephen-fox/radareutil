@@ -11,6 +11,10 @@ import (
 	"strings"
 )
 
+func radareSysProcAttr() *syscall.SysProcAttr {
+	return nil
+}
+
 func fullyQualifiedBinaryPath(exePath string) (string, error) {
 	if !filepath.IsAbs(exePath) && !strings.ContainsAny("/", exePath) {
 		whichOutputRaw, err := exec.Command("which", exePath).CombinedOutput()

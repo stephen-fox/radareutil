@@ -162,6 +162,7 @@ func (o *r2Proc) Start(mode Mode) error {
 
 	radare := exec.Command(o.config.ExecutablePath, args...)
 	radare.Dir = filepath.Dir(o.config.ExecutablePath)
+	radare.SysProcAttr = radareSysProcAttr()
 
 	stdin, err := radare.StdinPipe()
 	if err != nil {

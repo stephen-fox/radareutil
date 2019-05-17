@@ -7,7 +7,14 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 )
+
+func radareSysProcAttr() *syscall.SysProcAttr {
+	return &syscall.SysProcAttr{
+		HideWindow: true,
+	}
+}
 
 func fullyQualifiedBinaryPath(exePath string) (string, error) {
 	if !filepath.IsAbs(exePath) && !strings.ContainsAny("\\/", exePath) {

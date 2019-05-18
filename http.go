@@ -27,6 +27,10 @@ func (o *httpServerApi) Start() error {
 	return o.r2.Start(Http)
 }
 
+func (o *httpServerApi) Interrupt() error {
+	return o.r2.interrupt()
+}
+
 func (o *httpServerApi) Kill() {
 	o.r2.Kill()
 }

@@ -15,6 +15,12 @@ func radareSysProcAttr() *syscall.SysProcAttr {
 	return nil
 }
 
+func radareInterruptProcFunc() (interruptProcFunc, error) {
+	return func(cmd *exec.Cmd) error {
+		return cmd.Process.Signal(os.Interrupt)
+	}, nil
+}
+
 func fullyQualifiedBinaryPath(exePath string) (string, error) {
 	if !filepath.IsAbs(exePath) && !strings.ContainsAny("/", exePath) {
 		whichOutputRaw, err := exec.Command("which", exePath).CombinedOutput()

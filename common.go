@@ -33,8 +33,11 @@ const (
 	Running State = "running"
 )
 
+type interruptProcFunc func(*exec.Cmd) error
+
 type Api interface {
 	Start() error
+	Interrupt() error
 	Kill()
 	OnStopped() chan StoppedInfo
 	Status() Status
@@ -127,6 +130,7 @@ type r2Proc struct {
 	cmd     *exec.Cmd
 	stdin   io.Writer
 	stdout  io.Reader
+	inter   interruptProcFunc
 }
 
 func (o *r2Proc) Status() Status {
@@ -222,6 +226,17 @@ func (o *r2Proc) monitor(output *syncBuffer) {
 	o.mutex.Unlock()
 }
 
+func (o *r2Proc) interrupt() error {
+	o.mutex.Lock()
+	defer o.mutex.Unlock()
+
+	if o.state != Running {
+		return nil
+	}
+
+	return o.inter(o.cmd)
+}
+
 func (o *r2Proc) Kill() {
 	o.mutex.Lock()
 	defer o.mutex.Unlock()
@@ -262,10 +277,16 @@ func newSyncBuffer() *syncBuffer {
 }
 
 func newR2Proc(config *Radare2Config) (*r2Proc, error) {
+	interruptFunc, err := radareInterruptProcFunc()
+	if err != nil {
+		return nil, err
+	}
+
 	return &r2Proc{
 		config:  config,
 		mutex:   &sync.Mutex{},
 		state:   Stopped,
 		stopped: make(chan StoppedInfo),
+		inter:   interruptFunc,
 	}, nil
 }

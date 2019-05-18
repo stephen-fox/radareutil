@@ -27,6 +27,10 @@ func (o *cliApi) Start() error {
 	return nil
 }
 
+func (o *cliApi) Interrupt() error {
+	return o.r2.interrupt()
+}
+
 func (o *cliApi) Kill() {
 	o.r2.Kill()
 }

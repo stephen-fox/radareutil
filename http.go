@@ -24,7 +24,7 @@ type httpServerApi struct {
 }
 
 func (o *httpServerApi) Start() error {
-	return o.r2.Start(Http)
+	return o.r2.start(Http)
 }
 
 func (o *httpServerApi) Interrupt() error {
@@ -32,15 +32,15 @@ func (o *httpServerApi) Interrupt() error {
 }
 
 func (o *httpServerApi) Kill() {
-	o.r2.Kill()
+	o.r2.kill()
 }
 
 func (o *httpServerApi) Status() Status {
-	return o.r2.Status()
+	return o.r2.status()
 }
 
 func (o *httpServerApi) OnStopped() chan StoppedInfo {
-	return o.r2.OnStopped()
+	return o.r2.onStopped()
 }
 
 func (o *httpServerApi) ExecuteToJson(c string, p interface{}) error {
@@ -67,7 +67,7 @@ func (o *httpServerApi) Execute(command string) (string, error) {
 }
 
 func (o *httpServerApi) ExecuteToBytes(command string) ([]byte, error) {
-	current := o.r2.Status().State
+	current := o.r2.status().State
 	if current != Running {
 		return nil, fmt.Errorf("cannot execute command - state is %s", current)
 	}

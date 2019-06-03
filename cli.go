@@ -13,7 +13,7 @@ type cliApi struct {
 }
 
 func (o *cliApi) Start() error {
-	err := o.r2.Start(Cli)
+	err := o.r2.start(Cli)
 	if err != nil {
 		return err
 	}
@@ -32,15 +32,15 @@ func (o *cliApi) Interrupt() error {
 }
 
 func (o *cliApi) Kill() {
-	o.r2.Kill()
+	o.r2.kill()
 }
 
 func (o *cliApi) Status() Status {
-	return o.r2.Status()
+	return o.r2.status()
 }
 
 func (o *cliApi) OnStopped() chan StoppedInfo {
-	return o.r2.OnStopped()
+	return o.r2.onStopped()
 }
 
 func (o *cliApi) ExecuteToJson(c string, p interface{}) error {
@@ -67,7 +67,7 @@ func (o *cliApi) Execute(cmd string) (string, error) {
 }
 
 func (o *cliApi) ExecuteToBytes(cmd string) ([]byte, error) {
-	current := o.r2.Status().State
+	current := o.r2.status().State
 	if current != Running {
 		return nil, fmt.Errorf("cannot execute command - state is %s", current)
 	}

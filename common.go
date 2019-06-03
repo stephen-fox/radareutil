@@ -131,10 +131,10 @@ type r2Proc struct {
 	stdin   io.Writer
 	stdout  io.Reader
 	inter   interruptProcFunc
-	kill    chan func()
+	stop    chan func()
 }
 
-func (o *r2Proc) Status() Status {
+func (o *r2Proc) status() Status {
 	o.mutex.Lock()
 	defer o.mutex.Unlock()
 
@@ -143,11 +143,11 @@ func (o *r2Proc) Status() Status {
 	}
 }
 
-func (o *r2Proc) OnStopped() chan StoppedInfo {
+func (o *r2Proc) onStopped() chan StoppedInfo {
 	return o.stopped
 }
 
-func (o *r2Proc) Start(mode Mode) error {
+func (o *r2Proc) start(mode Mode) error {
 	o.mutex.Lock()
 	defer o.mutex.Unlock()
 
@@ -229,7 +229,7 @@ func (o *r2Proc) monitor(output *syncBuffer) {
 			o.state = Stopped
 		}
 		defer onDone()
-	case onDone := <-o.kill:
+	case onDone := <-o.stop:
 		o.state = Stopped
 		o.cmd.Process.Kill()
 		defer onDone()
@@ -258,7 +258,7 @@ func (o *r2Proc) interrupt() error {
 	return o.inter(o.cmd)
 }
 
-func (o *r2Proc) Kill() {
+func (o *r2Proc) kill() {
 	o.mutex.Lock()
 
 	if o.state != Running {
@@ -268,7 +268,7 @@ func (o *r2Proc) Kill() {
 
 	rejoin := make(chan struct{})
 
-	o.kill <- func() {
+	o.stop <- func() {
 		o.mutex.Unlock()
 		rejoin <- struct{}{}
 	}
@@ -314,6 +314,6 @@ func newR2Proc(config *Radare2Config) (*r2Proc, error) {
 		state:   Stopped,
 		stopped: make(chan StoppedInfo),
 		inter:   interruptFunc,
-		kill:    make(chan func()),
+		stop:    make(chan func()),
 	}, nil
 }

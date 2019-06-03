@@ -131,6 +131,7 @@ type r2Proc struct {
 	stdin   io.Writer
 	stdout  io.Reader
 	inter   interruptProcFunc
+	kill    chan func()
 }
 
 func (o *r2Proc) Status() Status {
@@ -201,19 +202,41 @@ func (o *r2Proc) Start(mode Mode) error {
 }
 
 func (o *r2Proc) monitor(output *syncBuffer) {
-	err := o.cmd.Wait()
+	procExit := make(chan func() (func(), error))
 
-	o.mutex.Lock()
+	go func() {
+		err := o.cmd.Wait()
+		o.mutex.Lock()
+		fn := func() (func(), error) {
+			return o.mutex.Unlock, err
+		}
+		select {
+		case procExit <- fn:
+		default:
+			o.mutex.Unlock()
+		}
+	}()
 
 	var info StoppedInfo
 
-	if output != nil {
-		info.out = output.String()
+	select {
+	case fn := <-procExit:
+		onDone, err := fn()
+		if err != nil {
+			o.state = Dead
+			info.err = err
+		} else {
+			o.state = Stopped
+		}
+		defer onDone()
+	case onDone := <-o.kill:
+		o.state = Stopped
+		o.cmd.Process.Kill()
+		defer onDone()
 	}
 
-	if o.state != Stopped {
-		o.state = Dead
-		info.err = err
+	if output != nil {
+		info.out = output.String()
 	}
 
 	select {
@@ -222,8 +245,6 @@ func (o *r2Proc) monitor(output *syncBuffer) {
 	}
 
 	o.cmd = nil
-
-	o.mutex.Unlock()
 }
 
 func (o *r2Proc) interrupt() error {
@@ -239,15 +260,20 @@ func (o *r2Proc) interrupt() error {
 
 func (o *r2Proc) Kill() {
 	o.mutex.Lock()
-	defer o.mutex.Unlock()
 
 	if o.state != Running {
+		o.mutex.Unlock()
 		return
 	}
 
-	o.state = Stopped
+	rejoin := make(chan struct{})
 
-	o.cmd.Process.Kill()
+	o.kill <- func() {
+		o.mutex.Unlock()
+		rejoin <- struct{}{}
+	}
+
+	<-rejoin
 }
 
 type syncBuffer struct {
@@ -288,5 +314,6 @@ func newR2Proc(config *Radare2Config) (*r2Proc, error) {
 		state:   Stopped,
 		stopped: make(chan StoppedInfo),
 		inter:   interruptFunc,
+		kill:    make(chan func()),
 	}, nil
 }

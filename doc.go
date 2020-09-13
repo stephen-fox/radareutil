@@ -1,3 +1,2 @@
-// Package radareutil provides functions for working with the radare2
-// debugging utility.
+// Package radareutil provides functions for working with radare2.
 package radareutil

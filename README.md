@@ -5,7 +5,7 @@
 [godoc-badge]: https://godoc.org/github.com/stephen-fox/radareutil?status.svg
 [godoc]: https://godoc.org/github.com/stephen-fox/radareutil
 
-Package radareutil provides functions for working with radare2.
+Package radareutil provides functionality for working with radare2.
 
 ## API
 This library currently provides very rudimentary support for radare2's CLI

@@ -12,7 +12,7 @@ import (
 // PdbToBasicBlockText formats the output of 'pdb' (print disassembly of
 // a basic block) into a pretty formatted basic block. For example,
 // assume the following 'pdb' output:
-//             ;-- rip:
+//            ;-- rip:
 //            ; 0x100555b8c
 //            ; "SecCertificateCopyValues"
 //            488d351a8a1f.  lea rsi, qword str.SecCertificateCopyValues

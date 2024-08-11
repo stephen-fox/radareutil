@@ -71,7 +71,7 @@ func (o *cliApi) ExecuteToBytes(cmd string) ([]byte, error) {
 		return nil, fmt.Errorf("cannot execute command - state is %s", current)
 	}
 
-	_, err := fmt.Fprintln(o.r2.stdin, cmd)
+	_, err := o.r2.stdin.Write([]byte(cmd + "\n"))
 	if err != nil {
 		return nil, err
 	}

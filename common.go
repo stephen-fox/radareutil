@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
-	"path/filepath"
 	"sync"
 )
 
@@ -167,7 +166,6 @@ func (o *r2Proc) start(mode Mode) error {
 	}
 
 	radare := exec.Command(o.config.ExecutablePath, args...)
-	radare.Dir = filepath.Dir(o.config.ExecutablePath)
 	radare.SysProcAttr = radareSysProcAttr()
 
 	stdin, err := radare.StdinPipe()

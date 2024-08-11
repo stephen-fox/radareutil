@@ -118,8 +118,8 @@ func (o *Radare2Config) Args(mode Mode) ([]string, error) {
 }
 
 // TODO: stderr. Holding onto stderr will require something
-//  constantly read it. Failure to do so will lead to radare2
-//  not producing any output.
+// constantly read it. Failure to do so will lead to radare2
+// not producing any output.
 type r2Proc struct {
 	config  *Radare2Config
 	mutex   *sync.Mutex

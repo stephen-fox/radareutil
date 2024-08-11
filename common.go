@@ -112,8 +112,6 @@ func (o *Radare2Config) Args(mode Mode) ([]string, error) {
 
 	if o.DebugPid > 0 {
 		args = append(args, "-d", fmt.Sprintf("%d", o.DebugPid))
-	} else {
-		args = append(args, "--")
 	}
 
 	return args, nil

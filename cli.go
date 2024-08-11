@@ -1,7 +1,6 @@
 package radareutil
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -19,7 +18,7 @@ func (o *cliApi) Start() error {
 	}
 
 	// Read initial data per pipe example.
-	_, err = bufio.NewReader(o.r2.stdout).ReadByte()
+	_, err = o.r2.stdout.ReadBytes(0x00)
 	if err != nil {
 		return err
 	}
@@ -77,7 +76,7 @@ func (o *cliApi) ExecuteToBytes(cmd string) ([]byte, error) {
 		return nil, err
 	}
 
-	raw, err := bufio.NewReader(o.r2.stdout).ReadBytes('\x00')
+	raw, err := o.r2.stdout.ReadBytes(0x00)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +85,7 @@ func (o *cliApi) ExecuteToBytes(cmd string) ([]byte, error) {
 		return raw, nil
 	}
 
-	return bytes.TrimSpace(bytes.TrimRight(raw, "\n\x00")), nil
+	return bytes.TrimRight(raw, "\n\x00"), nil
 }
 
 func NewCliApi(config *Radare2Config) (Api, error) {

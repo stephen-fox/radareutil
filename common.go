@@ -1,6 +1,7 @@
 package radareutil
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"io"
@@ -129,7 +130,7 @@ type r2Proc struct {
 	stopped chan StoppedInfo
 	cmd     *exec.Cmd
 	stdin   io.Writer
-	stdout  io.Reader
+	stdout  *bufio.Reader
 	inter   interruptProcFunc
 	stop    chan func()
 }
@@ -179,17 +180,17 @@ func (o *r2Proc) start(mode Mode) error {
 		return fmt.Errorf("failed to get stdout pipe - %s", err.Error())
 	}
 
-	err = radare.Start()
-	if err != nil {
-		return fmt.Errorf("failed to start radare - %s", err.Error())
-	}
-
 	var output *syncBuffer
 	if o.config.SaveOutput {
 		output = newSyncBuffer()
-		o.stdout = io.TeeReader(stdout, output)
+		o.stdout = bufio.NewReader(io.TeeReader(stdout, output))
 	} else {
-		o.stdout = stdout
+		o.stdout = bufio.NewReader(stdout)
+	}
+
+	err = radare.Start()
+	if err != nil {
+		return fmt.Errorf("failed to start radare - %s", err.Error())
 	}
 
 	o.state = Running

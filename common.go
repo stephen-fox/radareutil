@@ -3,6 +3,7 @@ package radareutil
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os/exec"
@@ -76,12 +77,9 @@ type Radare2Config struct {
 }
 
 func (o *Radare2Config) Validate() error {
-	exePathFinal, err := fullyQualifiedBinaryPath(o.ExecutablePath)
-	if err != nil {
-		return err
+	if o.ExecutablePath == "" {
+		return errors.New("executable path is empty")
 	}
-
-	o.ExecutablePath = exePathFinal
 
 	return nil
 }

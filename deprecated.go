@@ -226,11 +226,6 @@ func (o *deprecatedHttpServer) Execute(command string) (string, error) {
 
 // Deprecated: Use 'NewHttpServerApi()' instead.
 func NewHttpServer(exePath string, options *HttpServerOptions) (HttpServer, error) {
-	finalExePath, err := fullyQualifiedBinaryPath(exePath)
-	if err != nil {
-		return nil, err
-	}
-
 	if options.HttpApi == nil {
 		a, err := url.Parse(fmt.Sprintf("http://127.0.0.1:%d", options.Port))
 		if err != nil {
@@ -246,7 +241,7 @@ func NewHttpServer(exePath string, options *HttpServerOptions) (HttpServer, erro
 	}
 
 	return &deprecatedHttpServer{
-		exePath: finalExePath,
+		exePath: exePath,
 		options: options,
 		mutex:   &sync.Mutex{},
 		state:   Stopped,
